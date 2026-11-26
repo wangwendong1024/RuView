@@ -1,5 +1,15 @@
-// Internationalization - EN/PL language support
+// Shared language preferences for the Dashboard and Observatory.
 // Detects browser language, persists choice, translates UI strings
+
+import { dashboardMessages } from './dashboard-messages.js';
+
+const localeLabels = { en: 'English', pl: 'Polski', 'zh-CN': '简体中文' };
+const translatedAttributes = {
+  'data-i18n-placeholder': 'placeholder',
+  'data-i18n-aria': 'aria-label',
+  'data-i18n-title': 'title',
+  'data-i18n-label': 'label',
+};
 
 const translations = {
   en: {
@@ -77,7 +87,8 @@ const translations = {
     'misc.cancel': 'Cancel',
     'misc.confirm': 'Confirm',
     'misc.settings': 'Settings',
-    'misc.language': 'Language'
+    'misc.language': 'Language',
+    ...dashboardMessages.en,
   },
 
   pl: {
@@ -156,28 +167,42 @@ const translations = {
     'misc.confirm': 'Potwierdz',
     'misc.settings': 'Ustawienia',
     'misc.language': 'Jezyk'
-  }
+  },
+  'zh-CN': dashboardMessages['zh-CN'],
 };
 
 export class I18n {
   constructor() {
+    this.messages = Object.fromEntries(
+      Object.entries(translations).map(([locale, messages]) => [
+        locale, Object.assign(Object.create(null), messages),
+      ])
+    );
     this.locale = this.getSavedLocale() || this.detectLocale();
     this.listeners = [];
   }
 
-  init() {
-    this.createSelector();
+  init(container = document.querySelector('.header-info')) {
+    if (container && !document.getElementById('lang-selector')) {
+      this.createSelector(container);
+    }
     this.applyTranslations();
   }
 
   detectLocale() {
-    const lang = navigator.language?.toLowerCase() || 'en';
-    if (lang.startsWith('pl')) return 'pl';
+    const lang = globalThis.navigator?.language?.toLowerCase() || 'en';
+    if (/^pl(?:-|$)/.test(lang)) return 'pl';
+    if (/^zh(?:-(?:hans|cn|sg)(?:-|$)|$)/.test(lang) && !lang.split('-').includes('hant')) {
+      return 'zh-CN';
+    }
     return 'en';
   }
 
   getSavedLocale() {
-    try { return localStorage.getItem('ruview-locale'); }
+    try {
+      const locale = localStorage.getItem('ruview-locale');
+      return Object.hasOwn(this.messages, locale) ? locale : null;
+    }
     catch { return null; }
   }
 
@@ -186,16 +211,23 @@ export class I18n {
     catch { /* noop */ }
   }
 
-  t(key) {
-    const dict = translations[this.locale] || translations.en;
-    return dict[key] || translations.en[key] || key;
+  registerTranslations(messagesByLocale) {
+    for (const locale of Object.keys(localeLabels)) {
+      Object.assign(this.messages[locale], messagesByLocale[locale]);
+    }
+  }
+
+  t(key, values = {}) {
+    const message = this.messages[this.locale][key] ?? this.messages.en[key] ?? key;
+    return message.replace(/\{(\w+)\}/g, (placeholder, name) => (
+      Object.hasOwn(values, name) ? String(values[name]) : placeholder
+    ));
   }
 
   setLocale(locale) {
-    if (!translations[locale]) return;
+    if (!Object.hasOwn(this.messages, locale)) return;
     this.locale = locale;
     this.saveLocale(locale);
-    document.documentElement.setAttribute('lang', locale);
     this.applyTranslations();
     this.listeners.forEach(cb => { try { cb(locale); } catch { /* noop */ } });
   }
@@ -208,52 +240,43 @@ export class I18n {
     };
   }
 
-  applyTranslations() {
-    // Translate elements with data-i18n attribute
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-      const key = el.getAttribute('data-i18n');
-      el.textContent = this.t(key);
+  applyTranslations(root = document) {
+    document.documentElement.lang = this.locale;
+    root.querySelectorAll('[data-i18n]').forEach(element => {
+      element.textContent = this.t(element.dataset.i18n);
     });
 
-    // Translate placeholders
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-      const key = el.getAttribute('data-i18n-placeholder');
-      el.placeholder = this.t(key);
-    });
-
-    // Translate aria-labels
-    document.querySelectorAll('[data-i18n-aria]').forEach(el => {
-      const key = el.getAttribute('data-i18n-aria');
-      el.setAttribute('aria-label', this.t(key));
-    });
+    for (const [directive, attribute] of Object.entries(translatedAttributes)) {
+      root.querySelectorAll(`[${directive}]`).forEach(element => {
+        element.setAttribute(attribute, this.t(element.getAttribute(directive)));
+      });
+    }
 
     // Update language selector
     const selector = document.getElementById('lang-selector');
     if (selector) selector.value = this.locale;
   }
 
-  createSelector() {
+  createSelector(container) {
     const wrapper = document.createElement('div');
     wrapper.className = 'lang-selector-wrap';
-    wrapper.innerHTML = `
-      <select id="lang-selector" class="lang-selector" aria-label="Language">
-        <option value="en">EN</option>
-        <option value="pl">PL</option>
-      </select>
-    `;
-
-    const select = wrapper.querySelector('select');
+    const select = document.createElement('select');
+    select.id = 'lang-selector';
+    select.className = 'lang-selector';
+    select.setAttribute('data-i18n-aria', 'misc.language');
+    for (const [locale, label] of Object.entries(localeLabels)) {
+      const option = new Option(label, locale);
+      option.lang = locale;
+      select.add(option);
+    }
     select.value = this.locale;
     select.addEventListener('change', () => this.setLocale(select.value));
-
-    const headerInfo = document.querySelector('.header-info');
-    if (headerInfo) {
-      headerInfo.appendChild(wrapper);
-    }
+    wrapper.append(select);
+    container.append(wrapper);
   }
 
   getAvailableLocales() {
-    return Object.keys(translations);
+    return Object.keys(localeLabels);
   }
 
   dispose() {

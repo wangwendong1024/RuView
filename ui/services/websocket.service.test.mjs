@@ -44,6 +44,7 @@ class FakeWebSocket {
 globalThis.WebSocket = FakeWebSocket;
 
 const { WebSocketService } = await import('./websocket.service.js');
+const { backendDetector } = await import('../utils/backend-detector.js');
 
 beforeEach(() => {
   stored = {};
@@ -57,6 +58,31 @@ test('with no stored bearer, the socket opens with the URL unchanged', async () 
   await svc.createWebSocketWithTimeout('ws://host/api/v1/stream/pose?min_confidence=0.3');
   assert.equal(lastConstructedUrl, 'ws://host/api/v1/stream/pose?min_confidence=0.3');
   assert.equal(fetchCalls.length, 0, 'no ticket should be minted when auth is off');
+});
+
+test('leaving a page cancels pending WebSocket connections and closes late sockets', async t => {
+  globalThis.window = { location: new URL('http://localhost:3000') };
+  t.after(() => { delete globalThis.window; });
+  t.mock.method(backendDetector, 'shouldUseMockServer', async () => false);
+  const service = new WebSocketService();
+  let signalStarted;
+  const started = new Promise(resolve => { signalStarted = resolve; });
+  let finishHandshake;
+  service.createWebSocketWithTimeout = () => new Promise(resolve => {
+    finishHandshake = resolve;
+    signalStarted();
+  });
+  const connecting = service.connect('/api/v1/stream/pose');
+  await started;
+
+  service.disconnectAll();
+  assert.equal(service.connections.size, 0);
+
+  const closed = [];
+  finishHandshake({ close: (code, reason) => closed.push([code, reason]) });
+  await assert.rejects(connecting, { name: 'AbortError' });
+  assert.deepEqual(closed, [[1000, 'Client disconnect']]);
+  assert.equal(service.connections.size, 0);
 });
 
 test('a stored bearer is exchanged for a single-use ticket before the socket opens', async () => {

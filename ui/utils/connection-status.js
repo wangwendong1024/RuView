@@ -2,6 +2,8 @@
 // Shows WebSocket and API connection state with reconnect button
 
 import { sensingService } from '../services/sensing.service.js';
+import { i18n } from './i18n.js';
+import './dashboard-controls-messages.js';
 
 /** Ask QuickSettings to open on its API Access section (#2099). */
 export function openApiAccess(reason) {
@@ -26,11 +28,12 @@ export class ConnectionStatus {
     this.widget.setAttribute('aria-live', 'polite');
     this.widget.innerHTML = `
       <span class="conn-status-dot"></span>
-      <span class="conn-status-label">Connecting</span>
-      <button class="conn-status-reconnect" aria-label="Reconnect" title="Reconnect" style="display:none">
+      <span class="conn-status-label" data-i18n="conn.connecting"></span>
+      <button class="conn-status-reconnect" data-i18n-aria="connection.reconnect" data-i18n-title="connection.reconnect" style="display:none">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
       </button>
     `;
+    i18n.applyTranslations(this.widget);
 
     // #2099: while the server wants a token, the widget is the way to it.
     this.widget.addEventListener('click', (e) => {
@@ -42,7 +45,7 @@ export class ConnectionStatus {
     });
 
     this.widget.querySelector('.conn-status-reconnect').addEventListener('click', () => {
-      this.setStatus('reconnecting', 'Reconnecting...');
+      this.setStatus('reconnecting', 'conn.reconnecting');
       sensingService.reconnect?.();
     });
 
@@ -66,15 +69,14 @@ export class ConnectionStatus {
     const source = sensingService.dataSource;
 
     if (state === 'connected' || state === 'streaming') {
-      const label = source === 'live' ? 'Live' :
-                    source === 'server-simulated' ? 'Simulated' :
-                    'Connected';
-      this.setStatus('connected', label);
+      const key = source === 'live' ? 'conn.live' :
+                  source === 'server-simulated' ? 'conn.simulated' :
+                  'conn.connected';
+      this.setStatus('connected', key);
     } else if (state === 'connecting' || state === 'reconnecting') {
-      this.setStatus('reconnecting', 'Connecting...');
+      this.setStatus('reconnecting', 'conn.connecting');
     } else if (state === 'auth-required') {
-      this.setStatus('error', 'Token required');
-      this.widget.title = 'This server requires an API token. Click to open Settings \u2192 API Access.';
+      this.setStatus('error', 'connection.authRequired');
       // Open the panel once per page load; after that the widget stays
       // clickable but does not keep popping the panel up.
       if (!this._openedApiAccess) {
@@ -84,18 +86,27 @@ export class ConnectionStatus {
         setTimeout(() => openApiAccess(sensingService.authRequired), 0);
       }
     } else if (state === 'error') {
-      this.setStatus('error', 'Error');
+      this.setStatus('error', 'connection.error');
     } else {
-      this.setStatus('disconnected', 'Offline');
+      this.setStatus('disconnected', 'conn.offline');
     }
   }
 
-  setStatus(status, label) {
+  setStatus(status, labelKey) {
     if (!this.widget) return;
-    if (sensingService.state !== 'auth-required') this.widget.removeAttribute('title');
-    this.widget.style.cursor = sensingService.state === 'auth-required' ? 'pointer' : '';
+    const authRequired = sensingService.state === 'auth-required';
+    if (authRequired) {
+      this.widget.setAttribute('data-i18n-title', 'connection.authHint');
+      this.widget.title = i18n.t('connection.authHint');
+    } else {
+      this.widget.removeAttribute('data-i18n-title');
+      this.widget.removeAttribute('title');
+    }
+    this.widget.style.cursor = authRequired ? 'pointer' : '';
     this.widget.className = `conn-status conn-status-${status}`;
-    this.widget.querySelector('.conn-status-label').textContent = label;
+    const label = this.widget.querySelector('.conn-status-label');
+    label.setAttribute('data-i18n', labelKey);
+    label.textContent = i18n.t(labelKey);
 
     const reconnectBtn = this.widget.querySelector('.conn-status-reconnect');
     reconnectBtn.style.display =

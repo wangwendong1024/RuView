@@ -3,6 +3,28 @@
 import { healthService } from '../services/health.service.js';
 import { poseService } from '../services/pose.service.js';
 import { sensingService } from '../services/sensing.service.js';
+import { i18n } from '../utils/i18n.js';
+
+const liveSourceKeys = {
+  'ESP32 HARDWARE': 'source.esp32',
+  'HOST WIFI (RSSI ONLY)': 'source.wifiRssi',
+  'SOURCE UNSPECIFIED': 'source.unspecified',
+};
+
+const sourceStatus = {
+  live: { status: 'healthy', message: 'source.liveMessage' },
+  'server-simulated': { label: 'source.serverSimulated', status: 'warning', message: 'source.serverSimulatedMessage' },
+  reconnecting: { label: 'source.reconnecting', status: 'degraded', message: 'source.reconnectingMessage' },
+  unreachable: { label: 'source.noData', status: 'unhealthy', message: 'source.noDataMessage' },
+  simulated: { label: 'source.invented', status: 'unhealthy', message: 'source.inventedMessage' },
+  'auth-required': { label: 'source.tokenRequired', status: 'unhealthy', message: 'source.tokenMessage' },
+};
+
+function healthLabel(status) {
+  const key = `health.${status}`;
+  const label = i18n.t(key);
+  return label === key ? status.toUpperCase() : label;
+}
 
 export class DashboardTab {
   static STREAM_HEALTH_REFRESH_DELAY_MS = 500;
@@ -75,6 +97,10 @@ export class DashboardTab {
     this._sensingDataUnsub = sensingService.onData(() => {
       this.updateDataSourceIndicator();
     });
+    this._localeUnsub = i18n.onLocaleChange(() => {
+      this.updateDataSourceIndicator();
+      this.updateHealthStatus(this._lastHealth);
+    });
     // Initial update
     this.updateDataSourceIndicator();
 
@@ -111,18 +137,11 @@ export class DashboardTab {
     const ds = sensingService.dataSource;
     const statusText = el.querySelector('.status-text');
     const statusMsg  = el.querySelector('.status-message');
-    const config = {
-      'live':              { text: sensingService.liveSourceLabel, status: 'healthy', msg: 'Live measurements connected' },
-      'server-simulated':  { text: 'SIMULATED', status: 'warning', msg: 'Server running without hardware' },
-      'reconnecting':      { text: 'RECONNECTING', status: 'degraded', msg: 'Attempting to connect...' },
-      'unreachable':       { text: 'NO DATA',   status: 'unhealthy', msg: 'Server unreachable — readings below are stale' },
-      'simulated':         { text: 'INVENTED',  status: 'unhealthy', msg: 'Browser-generated data, not measured' },
-      'auth-required':     { text: 'TOKEN REQUIRED', status: 'unhealthy', msg: 'Paste the server API token in Settings \u2192 API Access' },
-    };
-    const cfg = config[ds] || config['reconnecting'];
+    const cfg = sourceStatus[ds] || sourceStatus.reconnecting;
+    const label = cfg.label || liveSourceKeys[sensingService.liveSourceLabel] || 'source.unspecified';
     el.className = `component-status status-${cfg.status}`;
-    if (statusText) statusText.textContent = cfg.text;
-    if (statusMsg)  statusMsg.textContent = cfg.msg;
+    if (statusText) statusText.textContent = i18n.t(label);
+    if (statusMsg) statusMsg.textContent = i18n.t(cfg.message);
   }
 
   // Update API info display
@@ -175,12 +194,13 @@ export class DashboardTab {
   // Update health status
   updateHealthStatus(health) {
     if (!health) return;
+    this._lastHealth = health;
 
     // Update overall status
     const overallStatus = this.container.querySelector('.overall-health');
     if (overallStatus) {
       overallStatus.className = `overall-health status-${health.status}`;
-      overallStatus.textContent = health.status.toUpperCase();
+      overallStatus.textContent = healthLabel(health.status);
     }
 
     // Update component statuses
@@ -214,7 +234,7 @@ export class DashboardTab {
       const statusMessage = element.querySelector('.status-message');
       
       if (statusText) {
-        statusText.textContent = status.status.toUpperCase();
+        statusText.textContent = healthLabel(status.status);
       }
       
       if (statusMessage && status.message) {
@@ -231,11 +251,11 @@ export class DashboardTab {
         const apiStatusMessage = apiElement.querySelector('.status-message');
         
         if (apiStatusText) {
-          apiStatusText.textContent = 'HEALTHY';
+          apiStatusText.textContent = i18n.t('health.healthy');
         }
         
         if (apiStatusMessage) {
-          apiStatusMessage.textContent = 'API server is running normally';
+          apiStatusMessage.textContent = i18n.t('health.apiRunning');
         }
       }
     }
@@ -450,6 +470,7 @@ export class DashboardTab {
     if (this._sensingUnsub) this._sensingUnsub();
     clearTimeout(this._streamHealthTimer);
     if (this._sensingDataUnsub) this._sensingDataUnsub();
+    if (this._localeUnsub) this._localeUnsub();
 
     if (this.statsInterval) {
       clearInterval(this.statsInterval);

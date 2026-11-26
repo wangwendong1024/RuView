@@ -177,6 +177,9 @@ RuView turns ordinary WiFi into a contactless sensor. A $9 ESP32 board reads the
 <details>
 <summary><strong>Quick start options</strong> — Docker, ESP32-S3/C6, Cognitum Seed, and Python</summary>
 
+The built-in Dashboard and Observatory share a language preference. Choose
+**简体中文** to use the monitoring and API access controls in Simplified Chinese.
+
 ```bash
 # Option 1: Docker (simulated data, no hardware needed)
 docker pull ruvnet/wifi-densepose:latest

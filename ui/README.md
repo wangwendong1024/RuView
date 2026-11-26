@@ -82,6 +82,11 @@ ui/
 
 ## Data Sources
 
+The Dashboard and Observatory headers offer **简体中文**. The browser remembers
+the language for both pages on the same origin. Simplified Chinese browser
+preferences select it on first visit, and users can switch back with the same
+selector. **设置 → API 访问** is the Chinese label for **Settings → API Access**.
+
 The sensing service (`sensing.service.js`) reports these connection states:
 
 | State | Banner Color | Description |

@@ -40,6 +40,8 @@ class WiFiDensePoseApp {
   async init() {
     try {
       console.log('Initializing WiFi DensePose UI...');
+
+      i18n.init();
       
       // Set up error handling
       this.setupErrorHandling();
@@ -61,7 +63,7 @@ class WiFiDensePoseApp {
       
     } catch (error) {
       console.error('Failed to initialize application:', error);
-      this.showGlobalError('Failed to initialize application. Please refresh the page.');
+      this.showGlobalError(i18n.t('dashboard.initFailed'));
     }
   }
 
@@ -86,17 +88,17 @@ class WiFiDensePoseApp {
       mockServer.start();
       
       // Show notification to user
-      this.showBackendStatus('Mock server active - testing mode', 'warning');
+      this.showBackendStatus(i18n.t('dashboard.backendMock'), 'warning');
     } else {
       console.log('🔌 Connecting to backend...');
 
       try {
         const health = await healthService.checkLiveness();
         console.log('✅ Backend responding:', health);
-        this.showBackendStatus('Connected to Rust sensing server', 'success');
+        this.showBackendStatus(i18n.t('dashboard.backendConnected'), 'success');
       } catch (error) {
         console.warn('⚠️ Backend not available:', error.message);
-        this.showBackendStatus('Backend unavailable — start sensing-server', 'warning');
+        this.showBackendStatus(i18n.t('dashboard.backendUnavailable'), 'warning');
       }
 
       // Mount the global provenance bar before the service starts, so the very
@@ -246,8 +248,8 @@ class WiFiDensePoseApp {
     this.quickSettings = new QuickSettings(this);
     this.quickSettings.init();
 
-    // Internationalization (EN/PL)
-    i18n.init();
+    // Translate controls added by the enhancement modules.
+    i18n.applyTranslations();
 
     // Keyboard shortcuts (pass app reference for tab switching)
     this.keyboardShortcuts = new KeyboardShortcuts(this);

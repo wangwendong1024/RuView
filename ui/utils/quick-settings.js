@@ -2,6 +2,20 @@
 // Accessible via gear icon in header
 
 import { apiService, API_TOKEN_STORAGE_KEY } from '../services/api.service.js';
+import { i18n } from './i18n.js';
+import './dashboard-controls-messages.js';
+
+const signInMessages = new WeakMap();
+
+function renderSignInMessage(element) {
+  const { key, values } = signInMessages.get(element) ?? { key: 'settings.checkingSignIn' };
+  element.textContent = i18n.t(key, values);
+}
+
+function setSignInMessage(element, key, values) {
+  signInMessages.set(element, { key, values });
+  renderSignInMessage(element);
+}
 
 export class QuickSettings {
   constructor(app) {
@@ -16,13 +30,18 @@ export class QuickSettings {
   init() {
     this.createButton();
     this.createPanel();
+    i18n.applyTranslations(this.button);
+    i18n.applyTranslations(this.panel);
+    const signInStatus = this.panel.querySelector('#qs-signin-status');
+    renderSignInMessage(signInStatus);
+    this.unsubscribeLocale = i18n.onLocaleChange(() => renderSignInMessage(signInStatus));
   }
 
   createButton() {
     this.button = document.createElement('button');
     this.button.className = 'settings-gear';
-    this.button.setAttribute('aria-label', 'Settings');
-    this.button.setAttribute('title', 'Quick settings');
+    this.button.setAttribute('data-i18n-aria', 'misc.settings');
+    this.button.setAttribute('data-i18n-title', 'settings.quick');
     this.button.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
 
     this.button.addEventListener('click', () => this.toggle());
@@ -35,76 +54,76 @@ export class QuickSettings {
     this.panel = document.createElement('div');
     this.panel.className = 'quick-settings-panel';
     this.panel.setAttribute('role', 'dialog');
-    this.panel.setAttribute('aria-label', 'Quick settings');
+    this.panel.setAttribute('data-i18n-aria', 'settings.quick');
 
     this.panel.innerHTML = `
       <div class="qs-header">
-        <h3>Settings</h3>
-        <button class="qs-close" aria-label="Close">&times;</button>
+        <h3 data-i18n="misc.settings"></h3>
+        <button class="qs-close" data-i18n-aria="misc.close">&times;</button>
       </div>
       <div class="qs-body">
         <div class="qs-section">
-          <div class="qs-section-title">Display</div>
+          <div class="qs-section-title" data-i18n="settings.display"></div>
           <label class="qs-toggle">
-            <span>Reduced motion</span>
+            <span data-i18n="settings.reducedMotion"></span>
             <input type="checkbox" id="qs-reduced-motion" ${this.prefersReducedMotion() ? 'checked' : ''}>
             <span class="qs-switch"></span>
           </label>
           <label class="qs-toggle">
-            <span>High contrast</span>
+            <span data-i18n="settings.highContrast"></span>
             <input type="checkbox" id="qs-high-contrast">
             <span class="qs-switch"></span>
           </label>
           <label class="qs-toggle">
-            <span>Compact mode</span>
+            <span data-i18n="settings.compactMode"></span>
             <input type="checkbox" id="qs-compact" ${this.getSetting('compact') ? 'checked' : ''}>
             <span class="qs-switch"></span>
           </label>
         </div>
         <div class="qs-section">
-          <div class="qs-section-title">Monitoring</div>
+          <div class="qs-section-title" data-i18n="settings.monitoring"></div>
           <label class="qs-toggle">
-            <span>Health polling</span>
+            <span data-i18n="settings.healthPolling"></span>
             <input type="checkbox" id="qs-health-polling" checked>
             <span class="qs-switch"></span>
           </label>
           <label class="qs-toggle">
-            <span>Auto-reconnect</span>
+            <span data-i18n="settings.autoReconnect"></span>
             <input type="checkbox" id="qs-auto-reconnect" checked>
             <span class="qs-switch"></span>
           </label>
         </div>
         <div class="qs-section">
-          <div class="qs-section-title">Cognitum Account</div>
+          <div class="qs-section-title" data-i18n="settings.cognitumAccount"></div>
           <div class="qs-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
-            <span id="qs-signin-status" style="font-size: 0.9em; opacity: 0.85;">Checking...</span>
+            <span id="qs-signin-status" style="font-size: 0.9em; opacity: 0.85;"></span>
             <div style="display: flex; gap: 8px;">
-              <button class="qs-btn" id="qs-signin" hidden>Sign in with Cognitum</button>
-              <button class="qs-btn-danger" id="qs-signout" hidden>Sign out</button>
+              <button class="qs-btn" id="qs-signin" data-i18n="settings.signIn" hidden></button>
+              <button class="qs-btn-danger" id="qs-signout" data-i18n="settings.signOut" hidden></button>
             </div>
           </div>
         </div>
         <div class="qs-section">
-          <div class="qs-section-title">API Access</div>
+          <div class="qs-section-title" data-i18n="settings.apiAccess"></div>
           <div class="qs-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
-            <span>Bearer token (set only if the server enforces RUVIEW_API_TOKEN)</span>
-            <input type="password" id="qs-api-token" class="qs-text-input" placeholder="Paste token..." autocomplete="off" style="width: 100%; box-sizing: border-box;">
+            <span data-i18n="settings.tokenHelp"></span>
+            <input type="password" id="qs-api-token" class="qs-text-input" data-i18n-placeholder="settings.tokenPlaceholder" autocomplete="off" style="width: 100%; box-sizing: border-box;">
             <div style="display: flex; gap: 8px;">
-              <button class="qs-btn" id="qs-api-token-save">Save & Apply</button>
-              <button class="qs-btn-danger" id="qs-api-token-clear">Clear</button>
+              <button class="qs-btn" id="qs-api-token-save" data-i18n="settings.saveApply"></button>
+              <button class="qs-btn-danger" id="qs-api-token-clear" data-i18n="settings.clear"></button>
             </div>
             <span id="qs-api-token-status" style="font-size: 0.85em; opacity: 0.75;"></span>
           </div>
         </div>
         <div class="qs-section">
-          <div class="qs-section-title">Data</div>
+          <div class="qs-section-title" data-i18n="settings.data"></div>
           <div class="qs-row">
-            <span>Clear local data</span>
-            <button class="qs-btn-danger" id="qs-clear-data">Clear</button>
+            <span data-i18n="settings.clearLocalData"></span>
+            <button class="qs-btn-danger" id="qs-clear-data" data-i18n="settings.clear"></button>
           </div>
           <div class="qs-row">
-            <span>Reset onboarding</span>
-            <button class="qs-btn" id="qs-reset-tour">Reset</button>
+            <span data-i18n="settings.resetOnboarding"></span>
+            <button class="qs-btn" id="qs-reset-tour" data-i18n="settings.reset"></button>
           </div>
         </div>
       </div>
@@ -157,25 +176,23 @@ export class QuickSettings {
 
     this.panel.querySelector('#qs-api-token-save').addEventListener('click', () => {
       const input = this.panel.querySelector('#qs-api-token');
-      const status = this.panel.querySelector('#qs-api-token-status');
       const token = input.value.trim();
       if (!token) {
-        status.textContent = 'Enter a token first, or use Clear to remove one.';
+        this.setTokenMessage('settings.tokenEmpty');
         return;
       }
       try { localStorage.setItem(API_TOKEN_STORAGE_KEY, token); } catch { /* noop */ }
       apiService.setAuthToken(token);
-      status.textContent = 'Token saved and applied. Reloading...';
+      this.setTokenMessage('settings.tokenSaved');
       setTimeout(() => window.location.reload(), 600);
     });
 
     this.panel.querySelector('#qs-api-token-clear').addEventListener('click', () => {
       const input = this.panel.querySelector('#qs-api-token');
-      const status = this.panel.querySelector('#qs-api-token-status');
       try { localStorage.removeItem(API_TOKEN_STORAGE_KEY); } catch { /* noop */ }
       apiService.setAuthToken(null);
       input.value = '';
-      status.textContent = 'Token cleared. Reloading...';
+      this.setTokenMessage('settings.tokenCleared');
       setTimeout(() => window.location.reload(), 600);
     });
 
@@ -225,10 +242,15 @@ export class QuickSettings {
     if (this.getSetting('compact')) {
       document.body.classList.add('compact-mode');
     }
-    const status = this.panel.querySelector('#qs-api-token-status');
     let hasToken = false;
     try { hasToken = !!localStorage.getItem(API_TOKEN_STORAGE_KEY); } catch { /* noop */ }
-    if (status) status.textContent = hasToken ? 'A token is currently set.' : 'No token set (auth is off or unnecessary).';
+    this.setTokenMessage(hasToken ? 'settings.tokenSet' : 'settings.tokenNotSet');
+  }
+
+  setTokenMessage(key) {
+    const status = this.panel.querySelector('#qs-api-token-status');
+    status.setAttribute('data-i18n', key);
+    status.textContent = i18n.t(key);
   }
 
   prefersReducedMotion() {
@@ -252,12 +274,7 @@ export class QuickSettings {
   /** Open on the API Access section and say why (#2099). */
   openApiAccess(reason) {
     this.open();
-    const status = this.panel.querySelector('#qs-api-token-status');
-    if (status) {
-      status.textContent = reason === 'rejected'
-        ? 'The server rejected the saved token. Paste the current RUVIEW_API_TOKEN and Save & Apply.'
-        : 'This server requires an API token. Paste RUVIEW_API_TOKEN and Save & Apply.';
-    }
+    this.setTokenMessage(reason === 'rejected' ? 'settings.tokenRejected' : 'settings.tokenRequired');
     const input = this.panel.querySelector('#qs-api-token');
     if (input) {
       input.scrollIntoView?.({ block: 'center' });
@@ -281,6 +298,7 @@ export class QuickSettings {
   }
 
   dispose() {
+    this.unsubscribeLocale?.();
     this.button?.remove();
     this.panel?.remove();
   }
@@ -307,39 +325,39 @@ export async function refreshSignInPanel(root = document) {
     // 404 = a server predating ADR-271. Say so plainly rather than offering a
     // button that will 404.
     if (resp.status === 404) {
-      status.textContent = 'This server does not support Cognitum sign-in.';
+      setSignInMessage(status, 'settings.signInUnsupported');
       signIn.hidden = true;
       signOut.hidden = true;
       return null;
     }
-    if (!resp.ok) throw new Error(`status ${resp.status}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     info = await resp.json();
   } catch (err) {
-    status.textContent = `Could not reach the server (${err.message}).`;
+    setSignInMessage(status, 'settings.signInUnreachable', { error: err.message });
     signIn.hidden = true;
     signOut.hidden = true;
     return null;
   }
 
   if (info.signed_in) {
-    status.textContent = `Signed in${info.account ? ` as ${info.account}` : ''}${
-      info.scope ? ` - ${info.scope}` : ''
-    }`;
+    const { account, scope } = info;
+    const key = account
+      ? (scope ? 'settings.signedInAsWithScope' : 'settings.signedInAs')
+      : (scope ? 'settings.signedInScope' : 'settings.signedIn');
+    setSignInMessage(status, key, { account, scope });
     signIn.hidden = true;
     signOut.hidden = false;
   } else if (info.browser_signin) {
-    status.textContent = info.auth_required
-      ? 'This server requires sign-in.'
-      : 'Optional: sign in to use your Cognitum account.';
+    setSignInMessage(status, info.auth_required ? 'settings.signInRequired' : 'settings.signInOptional');
     signIn.hidden = false;
     signOut.hidden = true;
   } else if (info.auth_required) {
     // Auth is on but OAuth is not — the static-token panel below is the path.
-    status.textContent = 'This server uses a shared API token (see API Access below).';
+    setSignInMessage(status, 'settings.sharedTokenRequired');
     signIn.hidden = true;
     signOut.hidden = true;
   } else {
-    status.textContent = 'This server does not require sign-in.';
+    setSignInMessage(status, 'settings.signInNotRequired');
     signIn.hidden = true;
     signOut.hidden = true;
   }

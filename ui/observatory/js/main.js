@@ -9,6 +9,7 @@
  * - Reflective floor, settings dialog, and practical data HUD
  */
 import { withWsTicket } from '../../services/ws-ticket.js';
+import { i18n } from '../../utils/i18n.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
@@ -400,7 +401,8 @@ class Observatory {
 
   _initKeyboard() {
     window.addEventListener('keydown', (e) => {
-      if (this._hud.settingsOpen) return;
+      if (this._hud.settingsOpen || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.isComposing ||
+          e.target.closest?.('button, select, input, textarea, a[href], [contenteditable]')) return;
       switch (e.key.toLowerCase()) {
         case 'a':
           this._autopilot = !this._autopilot;
@@ -695,7 +697,7 @@ class Observatory {
       this._fpsFrames = 0;
       this._fpsTime = 0;
       if (this._showFps) {
-        document.getElementById('fps-counter').textContent = `${this._fpsValue} FPS`;
+        document.getElementById('fps-counter').textContent = i18n.t('observatory.fps', { value: this._fpsValue });
       }
       this._adaptQuality();
     }

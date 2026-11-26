@@ -1231,6 +1231,12 @@ The built-in Three.js UI is served at `http://localhost:3000/ui/` (Docker) or th
 | **Dashboard** | `/ui/index.html` | Tabbed monitoring dashboard with body model, signal heatmap, phase plot, vital signs |
 | **Observatory** | `/ui/observatory.html` | Immersive 3D room visualization with cinematic lighting and wireframe figures |
 
+The language selector in either page header remembers your choice for both
+views on the same server URL. With no saved choice, a Simplified Chinese
+browser preference selects **简体中文**. For an authenticated server, open
+**设置 → API 访问** on the Dashboard to enter the API token before opening the
+Observatory. The standard data-source indicators remain available in Chinese.
+
 **Dashboard panels:**
 
 | Panel | Description |

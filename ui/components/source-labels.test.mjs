@@ -1,7 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+globalThis.localStorage = {
+  getItem: key => key === 'ruview-locale' ? 'en' : null,
+  setItem() {},
+  removeItem() {},
+};
 const { sensingService } = await import('../services/sensing.service.js');
 const { DashboardTab } = await import('./DashboardTab.js');
 const { SensingTab } = await import('./SensingTab.js');

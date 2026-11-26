@@ -82,6 +82,10 @@ export class WebSocketService {
     try {
       // Create WebSocket connection with timeout
       const ws = await this.createWebSocketWithTimeout(url);
+      if (this.connections.get(url) !== connectionData) {
+        ws.close(1000, 'Client disconnect');
+        throw new DOMException('WebSocket connection was cancelled', 'AbortError');
+      }
       connectionData.ws = ws;
 
       // Set up event handlers (replaces onopen/onmessage/etc.)
@@ -108,9 +112,11 @@ export class WebSocketService {
       this.logger.info('WebSocket connection initiated', { connectionId, url });
       return connectionId;
     } catch (error) {
-      this.logger.error('Failed to create WebSocket connection', { url, error: error.message });
-      this.connections.delete(url);
-      this.notifyConnectionState(url, 'failed', error);
+      if (this.connections.get(url) === connectionData) {
+        this.logger.error('Failed to create WebSocket connection', { url, error: error.message });
+        this.connections.delete(url);
+        this.notifyConnectionState(url, 'failed', error);
+      }
       throw error;
     }
   }
@@ -365,7 +371,7 @@ export class WebSocketService {
     }
 
     // Close WebSocket
-    if (connection.ws.readyState === WebSocket.OPEN) {
+    if (connection.ws && connection.ws.readyState === WebSocket.OPEN) {
       connection.ws.close(1000, 'Client disconnect');
     }
 

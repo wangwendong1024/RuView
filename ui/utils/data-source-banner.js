@@ -12,6 +12,7 @@
 
 import { sensingService } from '../services/sensing.service.js';
 import { openApiAccess } from './connection-status.js';
+import { i18n } from './i18n.js';
 
 const STYLE_ID = 'ruview-data-source-banner-style';
 const BAR_ID = 'ruview-data-source-banner';
@@ -19,29 +20,28 @@ const BAR_ID = 'ruview-data-source-banner';
 const CONFIG = {
   // 'live' is intentionally absent: no banner is shown for trustworthy data.
   'server-simulated': {
-    text: 'SYNTHETIC DATA — the server is generating this, no hardware is being read',
+    key: 'banner.serverSimulated',
     bg: '#7c3a00',
     fg: '#ffd9a0',
   },
   reconnecting: {
-    text: 'RECONNECTING — the display is frozen at the last live reading',
+    key: 'banner.reconnecting',
     bg: '#33302a',
     fg: '#e8dcc0',
   },
   unreachable: {
-    text: 'SERVER UNREACHABLE — nothing on this screen is current',
+    key: 'banner.unreachable',
     bg: '#5c1010',
     fg: '#ffc9c9',
   },
   simulated: {
-    text: 'SIMULATED — every value on this screen is invented by your browser, not measured',
+    key: 'banner.clientSimulated',
     bg: '#6b0f6b',
     fg: '#ffc9ff',
   },
   // #2099: the server refused the stream. Clicking the bar opens API Access.
   'auth-required': {
-    text: 'API TOKEN REQUIRED — this server needs its API token. Click here, or Settings → API Access',
-    textRejected: 'API TOKEN REJECTED — the saved token was refused. Click here, or Settings → API Access',
+    key: 'banner.tokenRequired',
     bg: '#5c1010',
     fg: '#ffc9c9',
   },
@@ -49,10 +49,8 @@ const CONFIG = {
 
 const CSS = `
 #${BAR_ID} {
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
   z-index: 100000;
   display: none;
   padding: 7px 14px;
@@ -70,7 +68,6 @@ const CSS = `
 @media (prefers-reduced-motion: reduce) {
   #${BAR_ID}.is-simulated { animation: none; }
 }
-body.ruview-has-data-source-banner { padding-top: 30px; }
 `;
 
 export class DataSourceBanner {
@@ -97,7 +94,7 @@ export class DataSourceBanner {
       // Announce changes, but don't interrupt: the reader is mid-task and the
       // message describes context, not an error to act on right now.
       this._bar.setAttribute('aria-live', 'polite');
-      document.body.appendChild(this._bar);
+      document.body.prepend(this._bar);
       this._bar.addEventListener('click', (e) => {
         if (sensingService.dataSource !== 'auth-required') return;
         // QuickSettings closes on any outside click; this click must not count.
@@ -108,6 +105,7 @@ export class DataSourceBanner {
 
     // dataSource changes are published on the state-listener channel.
     this._unsubscribe = sensingService.onStateChange(() => this.render());
+    this._localeUnsub = i18n.onLocaleChange(() => this.render());
     this.render();
   }
 
@@ -117,18 +115,17 @@ export class DataSourceBanner {
 
     if (!cfg) {
       this._bar.classList.remove('is-visible', 'is-simulated');
-      document.body.classList.remove('ruview-has-data-source-banner');
       return;
     }
 
-    this._bar.textContent =
-      cfg.textRejected && sensingService.authRequired === 'rejected' ? cfg.textRejected : cfg.text;
+    const tokenRejected = sensingService.dataSource === 'auth-required'
+      && sensingService.authRequired === 'rejected';
+    this._bar.textContent = i18n.t(tokenRejected ? 'banner.tokenRejected' : cfg.key);
     this._bar.style.cursor = sensingService.dataSource === 'auth-required' ? 'pointer' : '';
     this._bar.style.background = cfg.bg;
     this._bar.style.color = cfg.fg;
     this._bar.classList.add('is-visible');
     this._bar.classList.toggle('is-simulated', sensingService.dataSource === 'simulated');
-    document.body.classList.add('ruview-has-data-source-banner');
   }
 
   dispose() {
@@ -136,11 +133,11 @@ export class DataSourceBanner {
       this._unsubscribe();
       this._unsubscribe = null;
     }
+    this._localeUnsub?.();
     if (this._bar && this._bar.parentNode) {
       this._bar.parentNode.removeChild(this._bar);
     }
     this._bar = null;
-    document.body.classList.remove('ruview-has-data-source-banner');
   }
 }
 
