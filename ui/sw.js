@@ -1,11 +1,9 @@
 // RuView Service Worker - Offline caching for the dashboard shell
 // Strategy: Network-first for API calls, Cache-first for static assets
 
-// Bumped from v1: an older SW cached `/oauth/status` cache-first, so browsers
-// that ran it hold a permanently signed-out answer. `activate` deletes every
-// cache whose name is not CACHE_NAME, so bumping is what evicts it from clients
-// already in the field. Bump again if a future change poisons the cache.
-const CACHE_NAME = 'ruview-v2';
+// v2 evicted cached OAuth status responses. v3 refreshes the UI shell so
+// returning browsers load the new shared language preference and messages.
+const CACHE_NAME = 'ruview-v3';
 
 // Requests whose response depends on the caller's credentials. These must never
 // be served from the Cache API.
@@ -50,6 +48,9 @@ const SHELL_ASSETS = [
   '/utils/data-export.js',
   '/utils/fullscreen.js',
   '/utils/connection-status.js',
+  '/utils/dashboard-controls-messages.js',
+  '/utils/dashboard-messages.js',
+  '/utils/i18n.js',
   '/utils/mobile-nav.js'
 ];
 

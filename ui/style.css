@@ -1405,6 +1405,8 @@ canvas {
 /* Header info bar */
 .header-info {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-16);
   justify-content: center;
   margin-top: var(--space-16);
@@ -3884,6 +3886,7 @@ a:focus-visible,
   color: var(--color-text);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
+  min-block-size: max(24px, 1.5rem);
   padding: var(--space-4) var(--space-20) var(--space-4) var(--space-8);
   cursor: pointer;
   background-image: var(--select-caret-light);
@@ -3899,6 +3902,26 @@ a:focus-visible,
 .lang-selector:focus-visible {
   outline: var(--focus-outline);
   outline-offset: 2px;
+}
+
+html[lang="zh-CN"] {
+  --font-family-base: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC",
+    "Geist", system-ui, sans-serif;
+}
+
+html[lang="zh-CN"] .hero-section h2 {
+  text-wrap: balance;
+}
+
+html[lang="zh-CN"] :is(.subtitle, .hero-description, .status-message) {
+  line-height: 1.6;
+  overflow-wrap: break-word;
+}
+
+@media (pointer: coarse) {
+  .lang-selector {
+    min-block-size: max(44px, 2.75rem);
+  }
 }
 
 /* --- Uptime Clock --- */
@@ -4185,5 +4208,5 @@ a:focus-visible,
 
 @media (max-width: 640px) {
   .uptime-clock { display: none; }
-  .lang-selector-wrap { display: none; }
+  .header-info { gap: var(--space-8); }
 }

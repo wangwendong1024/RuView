@@ -10,6 +10,9 @@
  * - Quick-select scenario dropdown
  */
 
+import { i18n } from '../../utils/i18n.js';
+import './locale.js';
+
 // ---- Constants ----
 
 export const SCENARIO_NAMES = [
@@ -64,22 +67,7 @@ export const PRESETS = {
   },
 };
 
-// Scenario descriptions shown below the dropdown
-const SCENARIO_DESCRIPTIONS = {
-  auto:              'Auto-cycling through all sensing scenarios.',
-  empty_room:        'Baseline calibration with no human presence in the monitored zone.',
-  single_breathing:  'Detecting vital signs through WiFi signal micro-variations.',
-  two_walking:       'Tracking multiple people simultaneously via CSI multiplex separation.',
-  fall_event:        'Sudden posture-change detection using acceleration feature analysis.',
-  sleep_monitoring:  'Monitoring breathing patterns and apnea events during sleep.',
-  intrusion_detect:  'Passive perimeter monitoring -- no cameras, pure RF sensing.',
-  gesture_control:   'DTW-based gesture recognition from hand/arm motion signatures.',
-  crowd_occupancy:   'Estimating room occupancy count from aggregate CSI variance.',
-  search_rescue:     'Through-wall survivor detection using WiFi-MAT multistatic mode.',
-  elderly_care:      'Continuous gait analysis for early mobility-decline detection.',
-  fitness_tracking:  'Rep counting and exercise classification from body kinematics.',
-  security_patrol:   'Multi-zone presence patrol with camera-free motion heatmaps.',
-};
+const MOTION_STATES = new Set(['active', 'absent', 'present', 'present_still', 'present_moving', 'still', 'moving']);
 
 // Edge modules active per scenario
 const SCENARIO_EDGE_MODULES = {
@@ -143,7 +131,6 @@ function lerp(a, b, t) {
 export class HudController {
   constructor(observatory) {
     this._obs = observatory;
-    this._settingsOpen = false;
     this._rssiHistory = [];
     this._sparklineCtx = document.getElementById('rssi-sparkline')?.getContext('2d');
 
@@ -167,6 +154,10 @@ export class HudController {
     btn.addEventListener('click', () => this.toggleSettings());
     closeBtn.addEventListener('click', () => this.toggleSettings());
     overlay.addEventListener('click', (e) => { if (e.target === overlay) this.toggleSettings(); });
+    i18n.onLocaleChange(() => {
+      this._currentScenarioKey = null;
+      this.updateSourceBadge(this._obs.settings.dataSource, this._obs._ws);
+    });
 
     // Tab switching
     document.querySelectorAll('.stab').forEach(tab => {
@@ -306,12 +297,13 @@ export class HudController {
   // ============================================================
 
   toggleSettings() {
-    this._settingsOpen = !this._settingsOpen;
-    document.getElementById('settings-overlay').style.display = this._settingsOpen ? 'flex' : 'none';
+    const dialog = document.getElementById('settings-overlay');
+    if (dialog.open) dialog.close();
+    else dialog.showModal();
   }
 
   get settingsOpen() {
-    return this._settingsOpen;
+    return document.getElementById('settings-overlay').open;
   }
 
   saveSettings() {
@@ -362,11 +354,11 @@ export class HudController {
   updateSourceBadge(dataSource, ws) {
     const dot = document.querySelector('#data-source-badge .dot');
     const label = document.getElementById('data-source-label');
-    if (dataSource === 'ws' && ws?.readyState === WebSocket.OPEN) {
-      dot.className = 'dot dot--live'; label.textContent = 'LIVE';
-    } else {
-      dot.className = 'dot dot--demo'; label.textContent = 'DEMO';
-    }
+    const key = dataSource === 'ws' && ws?.readyState === WebSocket.OPEN ? 'live' : 'demo';
+    dot.className = `dot dot--${key}`;
+    label.dataset.i18n = `observatory.${key}`;
+    const caption = i18n.t(label.dataset.i18n);
+    if (label.textContent !== caption) label.textContent = caption;
   }
 
   // ============================================================
@@ -428,13 +420,10 @@ export class HudController {
     this._updatePersonDots(personCount);
 
     const presEl = document.getElementById('presence-indicator');
-    const presLabel = document.getElementById('presence-label');
     if (presEl) {
-      const ml = cls.motion_level || 'absent';
-      presEl.className = 'presence-state';
-      if (ml === 'active') { presEl.classList.add('presence--active'); presLabel.textContent = 'ACTIVE'; }
-      else if (cls.presence) { presEl.classList.add('presence--present'); presLabel.textContent = 'PRESENT'; }
-      else { presEl.classList.add('presence--absent'); presLabel.textContent = 'ABSENT'; }
+      const key = cls.motion_level === 'active' ? 'active' : (cls.presence ? 'present' : 'absent');
+      presEl.className = `presence-state presence--${key}`;
+      this._setText('presence-label', i18n.t(`observatory.${key}`));
     }
 
     const fallEl = document.getElementById('fall-alert');
@@ -448,8 +437,11 @@ export class HudController {
       this._updateEdgeModules(scenarioKey);
     }
     if (live) {
-      this._setText('scenario-description', 'Live measurements: ' +
-        (typeof cls.motion_level === 'string' ? cls.motion_level : 'classification unavailable').replaceAll('_', ' '));
+      const motion = cls.motion_level;
+      const classification = MOTION_STATES.has(motion)
+        ? i18n.t(`observatory.motion.${motion}`)
+        : (typeof motion === 'string' ? motion.replaceAll('_', ' ') : i18n.t('observatory.motion.unknown'));
+      this._setText('scenario-description', i18n.t('observatory.liveMeasurement', { classification }));
     }
   }
 
@@ -550,9 +542,8 @@ export class HudController {
   }
 
   _updateScenarioDescription(scenarioKey) {
-    const el = document.getElementById('scenario-description');
-    if (!el) return;
-    el.textContent = SCENARIO_DESCRIPTIONS[scenarioKey] || '';
+    this._setText('scenario-description', Object.hasOwn(SCENARIO_EDGE_MODULES, scenarioKey)
+      ? i18n.t(`observatory.description.${scenarioKey}`) : '');
   }
 
   _updateEdgeModules(scenarioKey) {
@@ -567,7 +558,7 @@ export class HudController {
     bar.style.display = 'flex';
     bar.innerHTML = modules.map(m => {
       const color = MODULE_COLORS[m] || 'var(--text-secondary)';
-      return `<span class="edge-badge" style="--badge-color:${color}">${m}</span>`;
+      return `<span class="edge-badge" style="--badge-color:${color}">${i18n.t(`observatory.module.${m}`)}</span>`;
     }).join('');
   }
 }
